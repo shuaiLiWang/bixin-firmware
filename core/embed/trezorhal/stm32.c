@@ -19,6 +19,7 @@
 
 #include STM32_HAL_H
 
+#include "dma.h"
 #include "rng.h"
 
 const uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0,
@@ -92,6 +93,9 @@ void SysTick_Handler(void) {
   // this is a millisecond tick counter that wraps after approximately
   // 49.71 days = (0xffffffff / (24 * 60 * 60 * 1000))
   uwTick++;
+  if (DMA_IDLE_ENABLED() && DMA_IDLE_TICK(uwTick)) {
+    dma_idle_handler(uwTick);
+  }
 }
 
 // from util.s
