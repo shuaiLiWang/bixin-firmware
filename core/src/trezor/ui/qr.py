@@ -2,7 +2,7 @@ from trezor import ui
 
 
 class Qr(ui.Component):
-    def __init__(self, data: bytes, x: int, y: int, scale: int):
+    def __init__(self, data: str, x: int, y: int, scale: int):
         self.data = data
         self.x = x
         self.y = y

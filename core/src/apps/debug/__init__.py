@@ -28,7 +28,7 @@ if __debug__:
 
     debuglink_decision_chan = loop.chan()
 
-    async def debuglink_decision_dispatcher():
+    async def debuglink_decision_dispatcher() -> None:
         from trezor.ui import confirm, swipe
 
         while True:

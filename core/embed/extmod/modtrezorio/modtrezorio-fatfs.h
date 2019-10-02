@@ -273,6 +273,10 @@ typedef struct _mp_obj_FatFSDir_t {
   FF_DIR dp;
 } mp_obj_FatFSDir_t;
 
+/// def __iter__(self) -> Iterator[Tuple[int, str, str]]:
+///     pass
+/// # TODO: unsure
+
 /// def __next__(self) -> Tuple[int, str, str]:
 ///     """
 ///     Read an entry in the directory

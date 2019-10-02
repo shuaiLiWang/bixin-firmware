@@ -47,7 +47,9 @@ async def request_passphrase_source(ctx: wire.Context) -> int:
     text.normal("Where do you want to", "enter your passphrase?")
     source = PassphraseSource(text)
 
-    return await ctx.wait(source)
+    response = await ctx.wait(source)
+    assert isinstance(response, int)
+    return response
 
 
 async def request_passphrase_ack(ctx: wire.Context, on_device: bool) -> str:
@@ -56,8 +58,8 @@ async def request_passphrase_ack(ctx: wire.Context, on_device: bool) -> str:
         text.normal("Please type your", "passphrase on the", "connected host.")
         await Popup(text)
 
-    req = PassphraseRequest(on_device=on_device)
-    ack = await ctx.call(req, PassphraseAck)
+    passphrase_request = PassphraseRequest(on_device=on_device)
+    ack = await ctx.call(passphrase_request, PassphraseAck)
 
     if on_device:
         if ack.passphrase is not None:
@@ -75,8 +77,10 @@ async def request_passphrase_ack(ctx: wire.Context, on_device: bool) -> str:
             raise wire.ProcessError("Passphrase not provided")
         passphrase = ack.passphrase
 
+    assert isinstance(passphrase, str)
+
     state = cache.get_state(prev_state=ack.state, passphrase=passphrase)
-    req = PassphraseStateRequest(state=state)
-    ack = await ctx.call(req, PassphraseStateAck)
+    state_request = PassphraseStateRequest(state=state)
+    ack = await ctx.call(state_request, PassphraseStateAck)
 
     return passphrase

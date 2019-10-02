@@ -334,6 +334,6 @@ class Layout(Component):
             self.dispatch(RENDER, 0, 0)
 
 
-def wait_until_layout_is_running():
+def wait_until_layout_is_running() -> Generator:
     while not layout_chan.takers:
         yield

@@ -21,7 +21,7 @@ if __debug__:
     from apps.debug import input_signal
 
 if False:
-    from typing import List, Optional, Callable
+    from typing import List, Optional, Callable, Union
     from trezor.messages.ResetDevice import EnumTypeBackupType
 
 
@@ -51,7 +51,7 @@ async def request_word_count(ctx: wire.Context, dry_run: bool) -> int:
     else:
         count = await ctx.wait(WordSelector(text))
 
-    return count
+    return count  # type: ignore
 
 
 async def request_mnemonic(
@@ -59,10 +59,12 @@ async def request_mnemonic(
 ) -> Optional[str]:
     await ctx.call(ButtonRequest(code=ButtonRequestType.MnemonicInput), ButtonAck)
 
-    words = []
+    words = []  # type: List[str]
     for i in range(word_count):
         if backup_types.is_slip39_word_count(word_count):
-            keyboard = Slip39Keyboard("Type word %s of %s:" % (i + 1, word_count))
+            keyboard = Slip39Keyboard(
+                "Type word %s of %s:" % (i + 1, word_count)
+            )  # type: Union[Slip39Keyboard, Bip39Keyboard]
         else:
             keyboard = Bip39Keyboard("Type word %s of %s:" % (i + 1, word_count))
         if __debug__:
@@ -152,7 +154,7 @@ async def check_word_validity(
 
 async def show_remaining_shares(
     ctx: wire.Context,
-    groups: List[int, List[str]],  # remaining + list 3 words
+    groups: List[List[Union[int, List[str]]]],  # remaining + list 3 words
     shares_remaining: List[int],
     group_threshold: int,
 ) -> None:
@@ -179,8 +181,7 @@ async def show_remaining_shares(
             for word in group:
                 text.normal(word)
             pages.append(text)
-
-    return await confirm(ctx, Paginated(pages), cancel=None)
+    await confirm(ctx, Paginated(pages), cancel=None)
 
 
 async def show_group_share_success(
@@ -192,7 +193,7 @@ async def show_group_share_success(
     text.normal("from")
     text.bold("Group %s" % (group_index + 1))
 
-    return await confirm(ctx, text, confirm="Continue", cancel=None)
+    await confirm(ctx, text, confirm="Continue", cancel=None)
 
 
 async def show_dry_run_result(ctx: wire.Context, result: bool, is_slip39: bool) -> None:

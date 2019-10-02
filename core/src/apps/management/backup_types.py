@@ -22,16 +22,19 @@ def is_slip39_word_count(word_count: int) -> bool:
     raise RuntimeError
 
 
-def is_slip39_backup_type(backup_type: EnumTypeBackupType):
+def is_slip39_backup_type(backup_type: EnumTypeBackupType) -> bool:
     return backup_type in (BackupType.Slip39_Basic, BackupType.Slip39_Advanced)
 
 
 def infer_backup_type(is_slip39: bool, share: Share = None) -> EnumTypeBackupType:
     if not is_slip39:  # BIP-39
-        return BackupType.Bip39
+        # TODO: unsure
+        return BackupType.Bip39  # type: ignore
     elif not share or share.group_count < 1:  # invalid parameters
         raise RuntimeError
     elif share.group_count == 1:
-        return BackupType.Slip39_Basic
+        # TODO: unsure
+        return BackupType.Slip39_Basic  # type: ignore
     else:
-        return BackupType.Slip39_Advanced
+        # TODO: unsure
+        return BackupType.Slip39_Advanced  # type: ignore
