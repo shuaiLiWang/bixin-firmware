@@ -81,6 +81,6 @@ async def request_passphrase_ack(ctx: wire.Context, on_device: bool) -> str:
 
     state = cache.get_state(prev_state=ack.state, passphrase=passphrase)
     state_request = PassphraseStateRequest(state=state)
-    ack = await ctx.call(state_request, PassphraseStateAck)
+    await ctx.call(state_request, PassphraseStateAck)
 
     return passphrase

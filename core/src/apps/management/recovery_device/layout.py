@@ -21,7 +21,7 @@ if __debug__:
     from apps.debug import input_signal
 
 if False:
-    from typing import List, Optional, Callable, Union
+    from typing import List, Optional, Callable, Union, Tuple
     from trezor.messages.ResetDevice import EnumTypeBackupType
 
 
@@ -129,6 +129,8 @@ async def check_word_validity(
                         remaining_shares = (
                             storage.recovery.fetch_slip39_remaining_shares()
                         )
+                        # if backup_type is not None, some share was already entered -> remaining needs to be set
+                        assert remaining_shares is not None
                         if remaining_shares[i] == 0:
                             await show_group_threshold_reached(ctx)
                             return False
@@ -154,7 +156,7 @@ async def check_word_validity(
 
 async def show_remaining_shares(
     ctx: wire.Context,
-    groups: List[List[Union[int, List[str]]]],  # remaining + list 3 words
+    groups: List[Tuple[int, List[str]]],  # remaining + list 3 words
     shares_remaining: List[int],
     group_threshold: int,
 ) -> None:

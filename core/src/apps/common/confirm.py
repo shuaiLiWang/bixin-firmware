@@ -89,11 +89,11 @@ async def hold_to_confirm(
 ) -> bool:
     await ctx.call(ButtonRequest(code=code), ButtonAck)
 
-    if content.__class__.__name__ == "Paginated":
+    if isinstance(content, Paginated):  # TODO: unsure: do I need to omit the import?
         content.pages[-1] = HoldToConfirm(
             content.pages[-1], confirm, confirm_style, loader_style
         )
-        dialog = content
+        dialog = content  # type: Union[Paginated, HoldToConfirm]
     else:
         dialog = HoldToConfirm(content, confirm, confirm_style, loader_style)
 
