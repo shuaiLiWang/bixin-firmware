@@ -29,6 +29,6 @@ legacy to upgrade tests deploy:
   variables:
     DEPLOY_DIRECTORY: "${DEPLOY_BASE_DIR}/upgrade_tests"
   script:
-    - rsync --delete -va core/build/unix/micropython "$DEST"
+    - rsync -va ci/trezor-emu-core-v2.1.6 "${DEPLOY_DIRECTORY}/trezor-emu-core-v2.1.6"
   tags:
     - deploy
