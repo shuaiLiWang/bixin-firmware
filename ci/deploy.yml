@@ -5,7 +5,7 @@ image: registry.gitlab.com/satoshilabs/trezor/trezor-firmware/environment
 release core fw regular deploy:
   stage: deploy
   variables:
-    DEPLOY_DIRECTORY: "releases/${CI_COMMIT_REF_NAME}/firmwares"
+    DEPLOY_DIRECTORY: "releases/firmwares"
   before_script: []  # no pipenv
   dependencies:
     - core fw regular build
@@ -25,7 +25,7 @@ release core fw regular deploy:
 release core fw btconly deploy:
   stage: deploy
   variables:
-    DEPLOY_DIRECTORY: "releases/${CI_COMMIT_REF_NAME}/firmwares"
+    DEPLOY_DIRECTORY: "releases/firmwares"
   before_script: []  # no pipenv
   dependencies:
     - core fw btconly build
@@ -45,7 +45,7 @@ release core fw btconly deploy:
 release legacy fw regular deploy:
   stage: deploy
   variables:
-    DEPLOY_DIRECTORY: "releases/${CI_COMMIT_REF_NAME}/firmwares"
+    DEPLOY_DIRECTORY: "releases/firmwares"
   before_script: []  # no pipenv
   dependencies:
     - legacy fw regular build
@@ -65,7 +65,7 @@ release legacy fw regular deploy:
 legacy fw btconly deploy:
   stage: deploy
   variables:
-    DEPLOY_DIRECTORY: "releases/${CI_COMMIT_REF_NAME}/firmwares"
+    DEPLOY_DIRECTORY: "releases/firmwares"
   before_script: []  # no pipenv
   dependencies:
     - legacy fw regular build
@@ -88,7 +88,7 @@ legacy fw btconly deploy:
 rc core fw regular deploy:
   stage: deploy
   variables:
-    DEPLOY_DIRECTORY: "release_candidates/${CI_COMMIT_REF_NAME}/firmwares"
+    DEPLOY_DIRECTORY: "release_candidates/${CI_COMMIT_REF_NAME:8}/firmwares"
   before_script: []  # no pipenv
   dependencies:
     - core fw regular build
