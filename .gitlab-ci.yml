@@ -22,18 +22,13 @@ variables:
   # No need for TLS because everything runs on the same machine
   DOCKER_TLS_CERTDIR: ""
 stages:
-  - environment
-  - prebuild
-  - build
-  - test
   - deploy
 
-before_script:
-  - pipenv sync
-
-include:
-  - ci/environment.yml
-  - ci/prebuild.yml
-  - ci/build.yml
-  - ci/test.yml
-  - ci/deploy.yml
+legacy to upgrade tests deploy:
+  stage: deploy
+  variables:
+    DEPLOY_DIRECTORY: "${DEPLOY_BASE_DIR}/upgrade_tests"
+  script:
+    - rsync --delete -va core/build/unix/micropython "$DEST"
+  tags:
+    - deploy
