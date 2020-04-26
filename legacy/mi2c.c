@@ -10,6 +10,17 @@
 #include "secbool.h"
 #include "sys.h"
 #include "usart.h"
+#include "secbool.h"
+#include "rand.h"
+#include "aes/aes.h"
+
+extern void config_setWhetherUseSE(bool flag);
+
+
+const uint8_t SessionModeMode_ROMKEY[16] =
+{
+    0x80,0xBA,0x15,0x37,0xD2,0x84,0x8D,0x64,0xA7,0xB4,0x58,0xF4,0x58,0xFE,0xD8,0x84
+};
 
 const uint8_t SessionModeMode_ROMKEY[16] = {0x80, 0xBA, 0x15, 0x37, 0xD2, 0x84,
                                             0x8D, 0x64, 0xA7, 0xB4, 0x58, 0xF4,
@@ -140,6 +151,8 @@ static bool bMI2CDRV_WriteBytes(uint32_t i2c, uint8_t *data,
     }
 
     i2c_send_7bit_address(i2c, MI2C_ADDR, MI2C_WRITE);
+
+    usTimeout = 0;
 
     // Waiting for address is transferred.
     while (!(I2C_SR1(i2c) & I2C_SR1_ADDR)) {
@@ -292,37 +305,38 @@ static void flash_exit(void) {
 /*
  *master i2c synsessionkey
  */
-void vMI2CDRV_SynSessionKey(void) {
-  uint8_t ucSessionMode, i;
-  uint8_t ucRandom[16];
-  uint32_t uiSessionFlag, uiSessionKeyTemp;
 
-  uiSessionFlag = *(uint32_t *)(SESSION_FALG_ADDR);
-
-  if (SESSION_FALG != uiSessionFlag) {
-    // enable mode session
-    ucSessionMode = 1;
-    memcpy(g_ucSessionKey, (uint8_t *)SessionModeMode_ROMKEY,
-           sizeof(SessionModeMode_ROMKEY));
-    if (MI2C_OK == MI2CDRV_Transmit(MI2C_CMD_WR_PIN, SESSION_FALG_INDEX,
-                                    (uint8_t *)&ucSessionMode, 1, NULL, 0, 0x00,
-                                    SET_SESTORE_DATA)) {
-      random_buffer_ST(ucRandom, sizeof(ucRandom));
-      memcpy(g_ucSessionKey, (uint8_t *)ucDefaultSessionKey,
-             sizeof(ucDefaultSessionKey));
-      if (MI2C_OK == MI2CDRV_Transmit(MI2C_CMD_WR_PIN, SESSION_ADDR_INDEX,
-                                      ucRandom, sizeof(ucRandom), NULL, 0, 0x00,
-                                      SET_SESTORE_DATA)) {
-        memcpy(g_ucSessionKey, ucRandom, SESSION_KEYLEN);
-        flash_enter();
-        for (i = 0; i < SESSION_KEYLEN / sizeof(uint32_t); i++) {
-          uiSessionKeyTemp =
-              (uint32_t)((g_ucSessionKey[i * sizeof(uint32_t) + 3] << 24) +
-                         (g_ucSessionKey[i * sizeof(uint32_t) + 2] << 16) +
-                         (g_ucSessionKey[i * sizeof(uint32_t) + 1] << 8) +
-                         (g_ucSessionKey[i * sizeof(uint32_t)]));
-          flash_program_word(SESSION_ADDR + i * sizeof(uint32_t),
-                             uiSessionKeyTemp);
+void vMI2CDRV_SynSessionKey(void)
+{
+    uint8_t ucSessionMode,i;
+    uint8_t ucRandom[16];
+    uint32_t uiSessionFlag,uiSessionKeyTemp;
+    
+    uiSessionFlag = *( uint32_t *)(SESSION_FALG_ADDR);
+    
+    if (SESSION_FALG != uiSessionFlag )
+    {
+       config_setWhetherUseSE(true);
+        //enable mode session
+        ucSessionMode = 1;
+        memcpy( g_ucSessionKey,( uint8_t *)SessionModeMode_ROMKEY,sizeof(SessionModeMode_ROMKEY));
+        if ( MI2C_OK == MI2CDRV_Transmit(MI2C_CMD_WR_PIN,SESSION_FALG_INDEX,( uint8_t *) &ucSessionMode, 1,NULL,0,0x00,SET_SESTORE_DATA) )
+        {
+             random_buffer_ST(ucRandom,sizeof(ucRandom));
+             memcpy( g_ucSessionKey,( uint8_t *)ucDefaultSessionKey,sizeof(ucDefaultSessionKey));
+             if ( MI2C_OK == MI2CDRV_Transmit(MI2C_CMD_WR_PIN,SESSION_ADDR_INDEX,ucRandom, sizeof(ucRandom),NULL,0,0x00,SET_SESTORE_DATA) )
+             {
+                 memcpy( g_ucSessionKey,ucRandom,SESSION_KEYLEN);
+                 flash_enter();
+                 for ( i = 0; i < SESSION_KEYLEN / sizeof(uint32_t); i++)
+                 {
+                    uiSessionKeyTemp = (uint32_t)((g_ucSessionKey[i* sizeof(uint32_t)+3]<<24) + (g_ucSessionKey[i * sizeof(uint32_t)+2]<<16)+ (g_ucSessionKey[i * sizeof(uint32_t)+1]<<8)+ (g_ucSessionKey[i * sizeof(uint32_t)]));
+                    flash_program_word(SESSION_ADDR + i * sizeof(uint32_t),uiSessionKeyTemp);
+                 } 
+                 uiSessionFlag = SESSION_FALG;
+                 flash_program_word(SESSION_FALG_ADDR ,uiSessionFlag);
+                 flash_exit();
+             }
         }
         uiSessionFlag = SESSION_FALG;
         flash_program_word(SESSION_FALG_ADDR, uiSessionFlag);
@@ -339,41 +353,45 @@ void vMI2CDRV_SynSessionKey(void) {
 /*
  *master i2c send
  */
-uint32_t MI2CDRV_Transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
-                          uint16_t usSendLen, uint8_t *pucRevData,
-                          uint16_t *pusRevLen, uint8_t ucMode,
-                          uint8_t ucWRFlag) {
-  uint8_t ucRandom[16], i;
-  uint16_t usPadLen;
-  aes_encrypt_ctx ctxe;
-  aes_decrypt_ctx ctxd;
-  // se apdu
-  if (MI2C_ENCRYPT == ucMode) {
-    if (SET_SESTORE_DATA == ucWRFlag) {
-      // data aes encrypt
-      randomBuf_SE(ucRandom, sizeof(ucRandom));
-      memset(&ctxe, 0, sizeof(aes_encrypt_ctx));
-      aes_encrypt_key128(g_ucSessionKey, &ctxe);
-      memcpy(SH_IOBUFFER, ucRandom, sizeof(ucRandom));
-      memcpy(SH_IOBUFFER + sizeof(ucRandom), pucSendData, usSendLen);
-      usSendLen += sizeof(ucRandom);
-      // add pad
-      if (usSendLen % AES_BLOCK_SIZE) {
-        usPadLen = AES_BLOCK_SIZE - (usSendLen % AES_BLOCK_SIZE);
-        memset(SH_IOBUFFER + usSendLen, 0x00, usPadLen);
-        SH_IOBUFFER[usSendLen] = 0x80;
-        usSendLen += usPadLen;
-      }
-      vUART_DebugInfo("\n\r  vMI2CDRV_SendData encrypt!\n\r", SH_IOBUFFER,
-                      usSendLen);
-      aes_ecb_encrypt(SH_IOBUFFER, g_ucMI2cRevBuf, usSendLen, &ctxe);
-    } else {
-      // data add random
-      random_buffer_ST(ucRandom, sizeof(ucRandom));
-      memcpy(g_ucMI2cRevBuf, ucRandom, sizeof(ucRandom));
-      if (usSendLen > 0)
-        memcpy(g_ucMI2cRevBuf + sizeof(ucRandom), pucSendData, usSendLen);
-      usSendLen += sizeof(ucRandom);
+uint32_t MI2CDRV_Transmit(uint8_t ucCmd,uint8_t ucIndex,uint8_t *pucSendData, uint16_t usSendLen,uint8_t *pucRevData,uint16_t *pusRevLen,uint8_t ucMode,uint8_t ucWRFlag)
+{
+    uint8_t ucRandom[16],i;
+    uint16_t usPadLen;
+    aes_encrypt_ctx ctxe;
+    aes_decrypt_ctx ctxd;
+    //se apdu
+    if (MI2C_ENCRYPT == ucMode )
+    {   
+        if (SET_SESTORE_DATA == ucWRFlag )
+        {
+            //data aes encrypt 
+            randomBuf_SE(ucRandom,sizeof(ucRandom));
+            memset(&ctxe, 0, sizeof(aes_encrypt_ctx));
+            aes_encrypt_key128(g_ucSessionKey,&ctxe);
+            memcpy(SH_IOBUFFER, ucRandom, sizeof(ucRandom));
+            memcpy(SH_IOBUFFER+sizeof(ucRandom), pucSendData, usSendLen);
+            usSendLen += sizeof(ucRandom);
+            //add pad 
+            if(usSendLen%AES_BLOCK_SIZE)
+            {
+              usPadLen =  AES_BLOCK_SIZE - (usSendLen%AES_BLOCK_SIZE);
+              memset(SH_IOBUFFER+usSendLen, 0x00, usPadLen);
+              SH_IOBUFFER[usSendLen]=0x80;
+              usSendLen += usPadLen;
+            }
+            aes_ecb_encrypt(SH_IOBUFFER, g_ucMI2cRevBuf,usSendLen,&ctxe);
+         }
+         else
+         {
+            // data add random  
+            random_buffer_ST(ucRandom,sizeof(ucRandom));
+            memcpy(g_ucMI2cRevBuf,ucRandom, sizeof(ucRandom));
+            if (usSendLen > 0 )
+            {
+              memcpy(g_ucMI2cRevBuf+sizeof(ucRandom), pucSendData, usSendLen);
+            }
+            usSendLen += sizeof(ucRandom);
+         }
     }
   }
 
@@ -435,16 +453,17 @@ uint32_t MI2CDRV_Transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
         }
       }
 
-      if (i != 0x11) {
-        g_usMI2cRevLen = g_usMI2cRevLen - i;
-      }
-      g_usMI2cRevLen -= sizeof(ucRandom);
-      if (pucRevData != NULL) {
-        vUART_DebugInfo("\n\r bMI2CDRV_ReceiveData decrypt!\n\r",
-                        SH_IOBUFFER + sizeof(ucRandom), g_usMI2cRevLen);
-        memcpy(pucRevData, SH_IOBUFFER + sizeof(ucRandom), g_usMI2cRevLen);
-        *pusRevLen = g_usMI2cRevLen;
-        return MI2C_OK;
+        if(i!=0x11)
+        {
+          g_usMI2cRevLen=g_usMI2cRevLen-i;
+        }
+        g_usMI2cRevLen  -=sizeof(ucRandom);
+        if (pucRevData != NULL)
+        {
+          memcpy(pucRevData, SH_IOBUFFER+sizeof(ucRandom), g_usMI2cRevLen);
+          *pusRevLen =g_usMI2cRevLen;
+          return MI2C_OK;
+        }
       }
     }
   }

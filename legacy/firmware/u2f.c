@@ -38,6 +38,7 @@
 #include "trezor.h"
 #include "usb.h"
 #include "util.h"
+#include "oled.h"
 
 #include "u2f.h"
 #include "u2f/u2f.h"
